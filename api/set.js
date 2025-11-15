@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         await redis.set("current_filme", JSON.stringify(payload));
         
         // 5. Resposta para o Chat
-        return res.status(200).send(`Filme atualizado: ${nome} - Duração: ${duracao} - Início: ${inicio}`);
+        return res.status(200).send(`Duração: ${duracao} - Início: ${inicio} - Filme atualizado: ${nome}`);
 
     } catch (err) {
         console.error("Erro no set.js:", err);
