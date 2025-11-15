@@ -1,87 +1,86 @@
 // api/filme.js
 import { Redis } from '@upstash/redis';
 
+// INICIALIZAÇÃO GLOBAL (Otimização para evitar Timeout)
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
 export default async function handler(req, res) {
   try {
-    // Verificar variáveis de ambiente
-    let UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-    let UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-    
-    // Remover espaços e caracteres invisíveis
-    if (UPSTASH_URL) UPSTASH_URL = UPSTASH_URL.trim().replace(/[\r\n]/g, '');
-    if (UPSTASH_TOKEN) UPSTASH_TOKEN = UPSTASH_TOKEN.trim().replace(/[\r\n]/g, '');
-    
-    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-      console.error("Variáveis de ambiente não configuradas");
-      console.error("UPSTASH_URL existe:", !!UPSTASH_URL);
-      console.error("UPSTASH_TOKEN existe:", !!UPSTASH_TOKEN);
-      return res.status(500).send("erro: configuração do Upstash faltando");
-    }
-    
-    // Debug: verificar se as variáveis estão sendo lidas (sem mostrar o token completo)
-    console.log("UPSTASH_URL:", UPSTASH_URL);
-    console.log("UPSTASH_TOKEN length:", UPSTASH_TOKEN.length);
-    console.log("UPSTASH_TOKEN começa com:", UPSTASH_TOKEN.substring(0, 10) + "...");
-    
-    // Inicializar Redis dentro do handler para garantir que as variáveis estão disponíveis
-    const redis = new Redis({
-      url: UPSTASH_URL,
-      token: UPSTASH_TOKEN,
-    });
-    
-    // ler chave current_filme do Upstash usando o SDK oficial
+    // 1. Busca dados do Redis
     const val = await redis.get("current_filme");
     
-    if (!val) return res.status(200).send("Nenhum filme configurado.");
+    if (!val) return res.status(200).send("Nenhum filme configurado no momento.");
 
-    // val já é o objeto parseado pelo SDK
+    // Garante que é um objeto (o SDK do Upstash as vezes já retorna parseado, as vezes string)
     const payload = typeof val === 'string' ? JSON.parse(val) : val;
     const { nome, duracao, inicio } = payload;
 
-    // parse duracao tipo "2h42m"
+    // 2. Função auxiliar para converter "1h30m" em minutos
     function duracaoParaMinutos(d) {
       let horas = 0, mins = 0;
-      if (d.includes("h")) horas = parseInt((d.split("h")[0]) || 0) || 0;
-      if (d.includes("m")) {
-        const tail = d.includes("h") ? d.split("h")[1] : d;
-        mins = parseInt((tail.replace("m","")) || 0) || 0;
+      d = d.toLowerCase();
+      if (d.includes("h")) {
+          const parts = d.split("h");
+          horas = parseInt(parts[0]) || 0;
+          if (parts[1] && parts[1].includes("m")) {
+              mins = parseInt(parts[1].replace("m","")) || 0;
+          }
+      } else if (d.includes("m")) {
+          mins = parseInt(d.replace("m","")) || 0;
+      } else {
+          // Tenta ler apenas números se não tiver h/m
+          mins = parseInt(d) || 0;
       }
-      return horas*60 + mins;
+      return (horas * 60) + mins;
     }
 
     const durMin = duracaoParaMinutos(duracao);
-    // interpretar início: usuário pode enviar "2025-11-12T01:55" ou "01:55" + usar data de hoje
+
+    // 3. Interpretar Horário de Início
+    // Aceita formato ISO ou apenas Horário "HH:MM" (assumindo dia atual)
     let comeco = new Date(inicio);
     if (isNaN(comeco.getTime())) {
-      // tentativa: se veio só "01:55" assumimos a data de hoje ou próxima data
       const now = new Date();
+      // Ajuste para fuso horário se necessário (aqui usa o do servidor/Vercel UTC)
+      // Se quiser forçar BRT, precisaria subtrair 3h, mas vamos manter simples:
       const parts = inicio.split(":");
-      comeco = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
-      // se horário futuro menor que agora e queremos o próximo dia, opcionalmente ajustar
+      if (parts.length >= 2) {
+          comeco = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+      }
     }
 
+    // 4. Cálculos de Tempo
     const fim = new Date(comeco.getTime() + durMin * 60000);
     const agora = new Date();
     const restanteMs = fim - agora;
+
+    // Se já acabou
     if (restanteMs <= 0) {
       return res.status(200).send(`${nome} já acabou.`);
     }
+
+    // Formata saída
     const h = Math.floor(restanteMs / (1000*60*60));
     const m = Math.floor((restanteMs % (1000*60*60)) / (1000*60));
     const s = Math.floor((restanteMs % (1000*60)) / 1000);
 
-    const parts = [];
-    if (h>0) parts.push(`${h}h`);
-    if (m>0) parts.push(`${m}m`);
-    parts.push(`${s}s`);
+    const partsArr = [];
+    if (h > 0) partsArr.push(`${h}h`);
+    if (m > 0) partsArr.push(`${m}m`);
+    partsArr.push(`${s}s`);
 
-    const timeStr = parts.join(" ");
-
+    const timeStr = partsArr.join(" ");
+    
+    // Formata a hora de inicio para exibição (HH:MM)
     const startedAt = comeco.toTimeString().slice(0,5);
-    const reply = `${nome} (começamos às ${startedAt}), falta para o filme acabar ${timeStr}`;
-    return res.status(200).send(reply);
+
+    return res.status(200).send(`${nome} (começamos às ${startedAt}), falta para o filme acabar ${timeStr}`);
+
   } catch (err) {
-    console.error("Erro completo:", err);
-    return res.status(500).send(`erro ao ler: ${err.message}`);
+    console.error("Erro no filme.js:", err);
+    return res.status(200).send(`Erro ao ler dados: ${err.message}`);
   }
 }
