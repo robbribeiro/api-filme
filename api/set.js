@@ -2,7 +2,18 @@
 import { Redis } from '@upstash/redis';
 
 export default async function handler(req, res) {
-    const { nome, duracao, inicio } = req.query;
+    // Decodificar e limpar parâmetros (importante para caracteres especiais e espaços)
+    let nome = req.query.nome ? decodeURIComponent(req.query.nome).trim() : null;
+    let duracao = req.query.duracao ? decodeURIComponent(req.query.duracao).trim() : null;
+    let inicio = req.query.inicio ? decodeURIComponent(req.query.inicio).trim() : null;
+    
+    // Remover aspas se houver (StreamElements pode enviar com aspas)
+    if (nome) nome = nome.replace(/^["']|["']$/g, '');
+    if (duracao) duracao = duracao.replace(/^["']|["']$/g, '');
+    if (inicio) inicio = inicio.replace(/^["']|["']$/g, '');
+    
+    console.log("Parâmetros recebidos:", { nome, duracao, inicio });
+    
     if (!nome || !duracao || !inicio) {
       return res.status(200).send("Parâmetros faltando. Use ?nome=&duracao=&inicio=");
     }
@@ -38,8 +49,10 @@ export default async function handler(req, res) {
       
       console.log("Filme salvo com sucesso:", payload);
       
-      // Retorna confirmação para o usuário
-      return res.status(200).send(`Filme atualizado: ${nome} - Duração: ${duracao} - Início: ${inicio}`);
+      // Retorna confirmação para o usuário (sempre retorna algo para o StreamElements mostrar)
+      const resposta = `Filme atualizado: ${nome} - Duração: ${duracao} - Início: ${inicio}`;
+      console.log("Resposta enviada:", resposta);
+      return res.status(200).send(resposta);
     } catch (err) {
       console.error("Erro ao salvar:", err);
       return res.status(500).send(`erro ao salvar: ${err.message}`);

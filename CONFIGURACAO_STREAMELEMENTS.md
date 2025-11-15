@@ -76,7 +76,7 @@ No chat da Twitch, moderadores/broadcasters podem digitar:
 ```
 
 **Formato dos parâmetros**:
-- **Nome**: Qualquer texto (se tiver espaços, use aspas ou o StreamElements pode separar incorretamente)
+- **Nome**: Qualquer texto (se tiver espaços, use aspas)
 - **Duração**: Formato `XhYm` (ex: `2h30m`, `1h45m`, `90m`)
 - **Início**: 
   - Formato simples: `20:00` (usa a data de hoje)
@@ -88,6 +88,11 @@ No chat da Twitch, moderadores/broadcasters podem digitar:
 !novofilme "O Poderoso Chefão" 2h55m 2025-01-20T19:30
 !novofilme Inception 2h28m 20:30
 ```
+
+**⚠️ IMPORTANTE**: 
+- Se o nome do filme tiver espaços, **use aspas** ao redor do nome
+- O StreamElements separa os argumentos por espaços, então `"O Poderoso Chefão"` (com aspas) será tratado como um único argumento
+- Sem aspas, `O Poderoso Chefão` será tratado como 3 argumentos separados
 
 **Resposta do comando**: Quando o filme for salvo com sucesso, o bot responderá com uma confirmação:
 ```
