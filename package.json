@@ -1,0 +1,16 @@
+{
+  "name": "api-filme",
+  "version": "1.0.0",
+  "description": "API para gerenciar filmes via chat da Twitch",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
+

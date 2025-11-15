@@ -1,45 +1,20 @@
 // api/filme.js
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
 export default async function handler(req, res) {
-  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim();
-  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   try {
-    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-      console.error("Variáveis de ambiente do Upstash não configuradas");
-      return res.status(500).send("erro: configuração do Upstash faltando");
-    }
-
-    // Debug: verificar se as variáveis estão sendo lidas (sem mostrar o token completo)
-    console.log("UPSTASH_URL:", UPSTASH_URL);
-    console.log("UPSTASH_TOKEN existe:", !!UPSTASH_TOKEN);
-    console.log("UPSTASH_TOKEN length:", UPSTASH_TOKEN?.length);
-
-    // ler chave current_filme do Upstash usando comando Redis GET
-    // Formato correto: POST para a URL base com Authorization Bearer
-    const command = ["GET", "current_filme"];
-    
-    const r = await fetch(UPSTASH_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${UPSTASH_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(command)
-    });
-    
-    if (!r.ok) {
-      const errorText = await r.text();
-      console.error("Erro ao ler do Upstash - Status:", r.status, "Response:", errorText);
-      return res.status(500).send(`erro ao ler do Upstash: ${r.status} - ${errorText}`);
-    }
-    
-    const j = await r.json();
-    // j.result contém o valor retornado pelo comando GET
-    const val = j.result;
+    // ler chave current_filme do Upstash usando o SDK oficial
+    const val = await redis.get("current_filme");
     
     if (!val) return res.status(200).send("Nenhum filme configurado.");
 
-    // val já é uma string JSON, então só precisamos fazer parse
-    const payload = JSON.parse(val);
+    // val já é o objeto parseado pelo SDK
+    const payload = typeof val === 'string' ? JSON.parse(val) : val;
     const { nome, duracao, inicio } = payload;
 
     // parse duracao tipo "2h42m"
