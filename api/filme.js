@@ -1,12 +1,17 @@
 // api/filme.js
 export default async function handler(req, res) {
-  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   try {
     if (!UPSTASH_URL || !UPSTASH_TOKEN) {
       console.error("Variáveis de ambiente do Upstash não configuradas");
       return res.status(500).send("erro: configuração do Upstash faltando");
     }
+
+    // Debug: verificar se as variáveis estão sendo lidas (sem mostrar o token completo)
+    console.log("UPSTASH_URL:", UPSTASH_URL);
+    console.log("UPSTASH_TOKEN existe:", !!UPSTASH_TOKEN);
+    console.log("UPSTASH_TOKEN length:", UPSTASH_TOKEN?.length);
 
     // ler chave current_filme do Upstash usando comando Redis GET
     // Formato correto: POST para a URL base com Authorization Bearer

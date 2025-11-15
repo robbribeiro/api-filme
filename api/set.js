@@ -6,8 +6,8 @@ export default async function handler(req, res) {
     }
   
     // armazenar objeto JSON como string no Upstash (chave: current_filme)
-    const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL; // ex: https://us1-stable-xxxxx.upstash.io
-    const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim(); // ex: https://us1-stable-xxxxx.upstash.io
+    const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   
     if (!UPSTASH_URL || !UPSTASH_TOKEN) {
       console.error("Variáveis de ambiente do Upstash não configuradas");
