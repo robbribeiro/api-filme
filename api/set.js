@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   
     // Formato correto da API REST do Upstash
     // A API REST do Upstash aceita comandos Redis via POST no formato de array
-    const url = `${UPSTASH_URL}?token=${UPSTASH_TOKEN}`;
+    // Usa Authorization Bearer header para autenticação
     const value = JSON.stringify(payload);
     
     // Comando Redis: SET current_filme "valor"
@@ -30,9 +30,10 @@ export default async function handler(req, res) {
     const command = ["SET", "current_filme", value];
   
     try {
-      const r = await fetch(url, { 
+      const r = await fetch(UPSTASH_URL, { 
         method: "POST",
         headers: {
+          "Authorization": `Bearer ${UPSTASH_TOKEN}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(command)
@@ -41,7 +42,7 @@ export default async function handler(req, res) {
       if (!r.ok) {
         const errorText = await r.text();
         console.error("Erro do Upstash - Status:", r.status, "Response:", errorText);
-        return res.status(500).send("erro ao salvar no Upstash");
+        return res.status(500).send(`erro ao salvar no Upstash: ${r.status} - ${errorText}`);
       }
       
       const j = await r.json();

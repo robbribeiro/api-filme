@@ -9,20 +9,22 @@ export default async function handler(req, res) {
     }
 
     // ler chave current_filme do Upstash usando comando Redis GET
-    const url = `${UPSTASH_URL}?token=${UPSTASH_TOKEN}`;
+    // Formato correto: POST para a URL base com Authorization Bearer
     const command = ["GET", "current_filme"];
     
-    const r = await fetch(url, {
+    const r = await fetch(UPSTASH_URL, {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${UPSTASH_TOKEN}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(command)
     });
     
     if (!r.ok) {
-      console.error("Erro ao ler do Upstash:", r.status);
-      return res.status(500).send("erro ao ler do Upstash");
+      const errorText = await r.text();
+      console.error("Erro ao ler do Upstash - Status:", r.status, "Response:", errorText);
+      return res.status(500).send(`erro ao ler do Upstash: ${r.status} - ${errorText}`);
     }
     
     const j = await r.json();
@@ -78,7 +80,7 @@ export default async function handler(req, res) {
     const reply = `${nome} (começamos às ${startedAt}), falta para o filme acabar ${timeStr}`;
     return res.status(200).send(reply);
   } catch (err) {
-    console.error(err);
-    return res.status(500).send("erro ao ler");
+    console.error("Erro completo:", err);
+    return res.status(500).send(`erro ao ler: ${err.message}`);
   }
 }
