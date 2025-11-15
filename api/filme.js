@@ -1,13 +1,34 @@
 // api/filme.js
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
 export default async function handler(req, res) {
   try {
+    // Verificar variáveis de ambiente
+    let UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+    let UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    // Remover espaços e caracteres invisíveis
+    if (UPSTASH_URL) UPSTASH_URL = UPSTASH_URL.trim().replace(/[\r\n]/g, '');
+    if (UPSTASH_TOKEN) UPSTASH_TOKEN = UPSTASH_TOKEN.trim().replace(/[\r\n]/g, '');
+    
+    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+      console.error("Variáveis de ambiente não configuradas");
+      console.error("UPSTASH_URL existe:", !!UPSTASH_URL);
+      console.error("UPSTASH_TOKEN existe:", !!UPSTASH_TOKEN);
+      return res.status(500).send("erro: configuração do Upstash faltando");
+    }
+    
+    // Debug: verificar se as variáveis estão sendo lidas (sem mostrar o token completo)
+    console.log("UPSTASH_URL:", UPSTASH_URL);
+    console.log("UPSTASH_TOKEN length:", UPSTASH_TOKEN.length);
+    console.log("UPSTASH_TOKEN começa com:", UPSTASH_TOKEN.substring(0, 10) + "...");
+    
+    // Inicializar Redis dentro do handler para garantir que as variáveis estão disponíveis
+    const redis = new Redis({
+      url: UPSTASH_URL,
+      token: UPSTASH_TOKEN,
+    });
+    
     // ler chave current_filme do Upstash usando o SDK oficial
     const val = await redis.get("current_filme");
     
