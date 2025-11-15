@@ -3,16 +3,36 @@ export default async function handler(req, res) {
   const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
   const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
   try {
-    // ler chave current_filme do Upstash (GET)
-    const url = `${UPSTASH_URL}/get/current_filme?token=${UPSTASH_TOKEN}`;
-    const r = await fetch(url);
+    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+      console.error("Variáveis de ambiente do Upstash não configuradas");
+      return res.status(500).send("erro: configuração do Upstash faltando");
+    }
+
+    // ler chave current_filme do Upstash usando comando Redis GET
+    const url = `${UPSTASH_URL}?token=${UPSTASH_TOKEN}`;
+    const command = ["GET", "current_filme"];
+    
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(command)
+    });
+    
+    if (!r.ok) {
+      console.error("Erro ao ler do Upstash:", r.status);
+      return res.status(500).send("erro ao ler do Upstash");
+    }
+    
     const j = await r.json();
-    // j.result pode conter a string que setamos; dependendo do método, ajuste a leitura
-    const val = j.result; // se usar formato diferente, adapte
+    // j.result contém o valor retornado pelo comando GET
+    const val = j.result;
+    
     if (!val) return res.status(200).send("Nenhum filme configurado.");
 
-    // se val for string codificada
-    const payload = JSON.parse(decodeURIComponent(val));
+    // val já é uma string JSON, então só precisamos fazer parse
+    const payload = JSON.parse(val);
     const { nome, duracao, inicio } = payload;
 
     // parse duracao tipo "2h42m"

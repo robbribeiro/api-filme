@@ -9,24 +9,49 @@ export default async function handler(req, res) {
     const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL; // ex: https://us1-stable-xxxxx.upstash.io
     const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
   
+    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+      console.error("Variáveis de ambiente do Upstash não configuradas");
+      return res.status(500).send("erro: configuração do Upstash faltando");
+    }
+  
     const payload = {
       nome,
       duracao,
       inicio
     };
   
-    // usar comando SET via REST
-    const body = JSON.stringify({ "token": UPSTASH_TOKEN, "cmd": `SET current_filme ${encodeURIComponent(JSON.stringify(payload))}` });
-    // Upstash REST expects specific endpoints; we'll call the simple REST URL with /set?key=... alternatively use the REST GET command:
-    const url = `${UPSTASH_URL}/set/current_filme/${encodeURIComponent(JSON.stringify(payload))}?token=${UPSTASH_TOKEN}`;
+    // Formato correto da API REST do Upstash
+    // A API REST do Upstash aceita comandos Redis via POST no formato de array
+    const url = `${UPSTASH_URL}?token=${UPSTASH_TOKEN}`;
+    const value = JSON.stringify(payload);
+    
+    // Comando Redis: SET current_filme "valor"
+    // O Upstash REST API espera um array de comandos: ["SET", "key", "value"]
+    const command = ["SET", "current_filme", value];
   
     try {
-      const r = await fetch(url, { method: "POST" });
-      const j = await r.text();
-      // respondemos vazio para o bot ficar "silencioso" ou uma confirmação curta
-      return res.status(200).send(""); // resposta vazia -> chat do SE não mostrará nada visível
+      const r = await fetch(url, { 
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(command)
+      });
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        console.error("Erro do Upstash - Status:", r.status, "Response:", errorText);
+        return res.status(500).send("erro ao salvar no Upstash");
+      }
+      
+      const j = await r.json();
+      console.log("Resposta do Upstash:", j);
+      console.log("Filme salvo com sucesso:", payload);
+      
+      // Retorna confirmação para o usuário
+      return res.status(200).send(`Filme atualizado: ${nome} - Duração: ${duracao} - Início: ${inicio}`);
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao salvar:", err);
       return res.status(500).send("erro ao salvar");
     }
   }
